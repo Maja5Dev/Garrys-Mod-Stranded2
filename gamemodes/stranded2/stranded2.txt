@@ -1,0 +1,13 @@
+"stranded2"
+{
+	"base"		"sandbox"
+	"title"		"Stranded 2"
+	"maps"		"gm_bigisland"
+	"category"	"pve"
+	"menusystem"	"1"
+	
+	"settings"
+	{
+		
+	}
+}
