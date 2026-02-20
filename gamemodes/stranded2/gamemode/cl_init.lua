@@ -7,6 +7,7 @@ include("client/cl_char_creation.lua")
 include("client/cl_hud_stats.lua")
 include("client/cl_hud.lua")
 include("client/cl_targetid_actions.lua")
+include("shared/items.lua")
 include("client/cl_backpack.lua")
 
 local halo_color = Color(125, 125, 125)

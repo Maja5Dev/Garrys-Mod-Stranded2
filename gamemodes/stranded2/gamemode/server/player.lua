@@ -3,6 +3,7 @@ function GM:PlayerInitialSpawn(ply)
 	ply:SetNoDraw(true)
 	ply:SetTeam(TEAM_UNASSIGNED)
 	ply:ConCommand("char_menu")
+	ply.died = false
 end
 
 function GM:PlayerSpawn(ply)
@@ -13,11 +14,10 @@ function GM:PlayerSpawn(ply)
 	ply:SetSuppressPickupNotices(true)
 
 	if ply.died == true then
-		ply:SetHealth(50)
-		ply:SetHunger(100)
-		ply:SetThirst(100)
+		ply:SetHealth(40)
+		ply:SetHunger(30)
+		ply:SetThirst(30)
 		ply.died = false
-		print("Player " .. ply:Name() .. " has respawned with 50 health, 100 hunger, and 100 thirst.")
 	end
 end
 

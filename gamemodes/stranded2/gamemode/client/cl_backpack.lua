@@ -8,13 +8,17 @@ for x = 0, BACKPACK_GRID_W - 1 do
 end
 
 -- Helper function to occupy or clear grid spaces
-local function SetGridSpace(startX, startY, itemW, itemH, state)
+local function SetGridSpace(GridData, startX, startY, itemW, itemH, state)
+    if not GridData[startX] then return end
+    
     for x = startX, startX + itemW - 1 do
         for y = startY, startY + itemH - 1 do
             GridData[x][y] = state
         end
     end
 end
+
+local backpack_frame = nil
 
 local function OpenBackpack(items)
     -- Clear previous grid data if reopening
@@ -24,10 +28,12 @@ local function OpenBackpack(items)
 
     local frame = vgui.Create("DFrame")
     -- Calculate total size: slots * size + padding on both sides
-    frame:SetSize((BACKPACK_GRID_W * BACKPACK_SLOT_SIZE) + (PADDING * 2), (BACKPACK_GRID_H * BACKPACK_SLOT_SIZE) + (PADDING * 2))
+    frame:SetSize((BACKPACK_GRID_W * BACKPACK_SLOT_SIZE) + (PADDING * 2) + 130, (BACKPACK_GRID_H * BACKPACK_SLOT_SIZE) + (PADDING * 2))
     frame:Center()
     frame:SetTitle("Backpack")
     frame:MakePopup()
+
+    backpack_frame = frame
 
     -- Paint the background and grid
     frame.Paint = function(self, w, h)
@@ -46,12 +52,62 @@ local function OpenBackpack(items)
     frame.newItems = {}
 
     frame.OnClose = function(self)
-        PrintTable(self.newItems)
-
         net.Start("st_backpack_save_positions")
             net.WriteTable(self.newItems)
         net.SendToServer()
     end
+
+    local selectedItem = nil
+
+    local action_panel = vgui.Create("DPanel", frame)
+    action_panel:SetSize(130, 30)
+    action_panel:SetPos(frame:GetWide() - action_panel:GetWide() - 10, frame:GetTall() - action_panel:GetTall() - 10)
+    action_panel.Paint = function(self, w, h)
+        if selectedItem then
+            draw.RoundedBox(4, 0, 0, w, h, Color(70, 70, 70, 255))
+        end
+    end
+
+    local createActions = function(item_id, item_name)
+        -- Clear previous buttons
+        for _, child in pairs(action_panel:GetChildren()) do
+            child:Remove()
+        end
+
+        -- Find the item data based on item_id
+        local itemData = nil
+
+        for name, data in pairs(ST_ITEMS) do
+            if name == item_name then
+                itemData = data
+                break
+            end
+        end
+
+        if not itemData or not itemData.actions then return end
+
+        local buttonY = 0
+        for _, action in ipairs(itemData.actions) do
+            local btn = vgui.Create("DButton", action_panel)
+            btn:SetSize(action_panel:GetWide(), 30)
+            btn:SetPos(0, buttonY)
+            btn:SetText("")
+            btn.DoClick = function()
+                if action.func then
+                    net.Start("st_pl_item_action")
+                        net.WriteInt(item_id, 16)
+                        net.WriteString(action.name)
+                    net.SendToServer()
+                end
+            end
+            btn.Paint = function(self, w, h)
+                draw.RoundedBox(4, 0, 0, w, h, Color(70, 70, 70, 255))
+                draw.SimpleText(action.name, "DermaDefault", w/2, h/2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+            end
+            buttonY = buttonY + 35 -- Move down for next button
+        end
+    end
+
 
     -- Function to spawn items into the grid
     local function CreateItem(slotsW, slotsH, startX, startY, color, name, item_id)
@@ -70,16 +126,25 @@ local function OpenBackpack(items)
 
         -- Snap to initial position and register in grid
         item:SetPos(PADDING + (startX * BACKPACK_SLOT_SIZE), PADDING + (startY * BACKPACK_SLOT_SIZE))
-        SetGridSpace(startX, startY, slotsW, slotsH, true)
+        SetGridSpace(GridData, startX, startY, slotsW, slotsH, true)
 
         item.Paint = function(self, w, h)
-            draw.RoundedBox(4, 0, 0, w, h, color)
+            local clr = color
+            if selectedItem == item_id then
+                clr = Color(color.r + 20, color.g + 20, color.b + 20, 255)
+            else
+                clr = color
+            end
+            draw.RoundedBox(4, 0, 0, w, h, clr)
             draw.SimpleText(name, "DermaDefault", w/2, h/2, color_white, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
         end
 
         -- Custom Drag Logic
         item.OnMousePressed = function(self, mousecode)
             if mousecode == MOUSE_LEFT then
+                selectedItem = item_id
+                createActions(item_id, name)
+
                 self:MouseCapture(true)
                 self.Dragging = true
                 self:MoveToFront()
@@ -92,7 +157,7 @@ local function OpenBackpack(items)
                 self.HoldX, self.HoldY = self:ScreenToLocal(mx, my)
 
                 -- Temporarily free up the grid space while dragging
-                SetGridSpace(self.GridX, self.GridY, self.SlotsW, self.SlotsH, false)
+                SetGridSpace(GridData, self.GridX, self.GridY, self.SlotsW, self.SlotsH, false)
             end
         end
 
@@ -112,11 +177,11 @@ local function OpenBackpack(items)
                     self.GridX = dropX
                     self.GridY = dropY
                     self:SetPos(PADDING + (dropX * BACKPACK_SLOT_SIZE), PADDING + (dropY * BACKPACK_SLOT_SIZE))
-                    SetGridSpace(self.GridX, self.GridY, self.SlotsW, self.SlotsH, true)
+                    SetGridSpace(GridData, self.GridX, self.GridY, self.SlotsW, self.SlotsH, true)
                 else
                     -- Invalid Drop! Snap it back to its original position
                     self:SetPos(self.StartX, self.StartY)
-                    SetGridSpace(self.GridX, self.GridY, self.SlotsW, self.SlotsH, true)
+                    SetGridSpace(GridData, self.GridX, self.GridY, self.SlotsW, self.SlotsH, true)
                 end
 
                 -- Save the new position for server update
@@ -144,6 +209,15 @@ local function OpenBackpack(items)
 end
 
 net.Receive("st_backpack_open", function(len)
+    local items = net.ReadTable()
+    OpenBackpack(items)
+end)
+
+net.Receive("st_backpack_update", function(len)
+    if IsValid(backpack_frame) then
+        backpack_frame:Close()
+    end
+
     local items = net.ReadTable()
     OpenBackpack(items)
 end)

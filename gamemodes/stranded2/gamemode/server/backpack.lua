@@ -11,6 +11,8 @@ end)
 net.Receive("st_backpack_save_positions", function(len, ply)
     local items = net.ReadTable()
 
+    ply.backpack_items = ply.backpack_items or {}
+
     for k,v in pairs(ply.backpack_items) do
         for _, v2 in pairs(items) do
             if v2.id == v.id then
@@ -20,10 +22,6 @@ net.Receive("st_backpack_save_positions", function(len, ply)
         end
     end
 end)
-
-local ST_ITEMS = {
-    ["Berry"] = {w = 1, h = 1, color = Color(200, 50, 150, 200)},
-}
 
 if NEXT_ITEM_ID == nil then
     NEXT_ITEM_ID = 1

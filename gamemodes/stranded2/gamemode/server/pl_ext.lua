@@ -47,6 +47,13 @@ function player_meta:UnSpectatePlayer(savepos)
 	end
 end
 
+-- Health
+function player_meta:AddHealth(amount)
+    local health = self:Health()
+    health = math.Clamp(health + amount, 0, self:GetMaxHealth())
+    self:SetHealth(health)
+end
+
 -- Char Name
 function player_meta:SetCharName(name)
     self:SetNWString("st_char_name", name)

@@ -13,6 +13,10 @@ BACKPACK_SLOT_SIZE = 40
 BACKPACK_GRID_W = 10
 BACKPACK_GRID_H = 10
 
+DEF_WALK_SPEED = 180
+DEF_RUN_SPEED = 240
+DEF_JUMP_POWER = 180
+
 function CanPlaceItem(GridData, startX, startY, itemW, itemH)
     -- Check if it's out of bounds
     if startX < 0 or startY < 0 or (startX + itemW) > BACKPACK_GRID_W or (startY + itemH) > BACKPACK_GRID_H then

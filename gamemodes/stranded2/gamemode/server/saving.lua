@@ -86,7 +86,7 @@ function player_meta:LoadCharacterState(char_id)
 	self:SetStatSpeed(tonumber(data.stat_speed) or 0)
 	self:SetStatStamina(tonumber(data.stat_stamina) or 0)
 
-	ply.backpack_items = data.backpack_items or {}
+	self.backpack_items = data.backpack_items or {}
 
 	self:SetNWInt("st_charid", char_id)
 end
